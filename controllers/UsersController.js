@@ -3,7 +3,7 @@ const sha1 = require('sha1');
 const dbClient = require('../utils/db');
 // const redisClient = require('../utils/redis');
 
-exports.postNew = async (req, res) => {
+exports.postNew = async function postNew(req, res) {
   const userEmail = req.body.email;
   const userPassword = req.body.password;
 
@@ -26,6 +26,7 @@ exports.postNew = async (req, res) => {
     res.status(400).json({
       error: 'Already exist',
     });
+    return;
   }
 
   const hashedPass = sha1(userPassword);
