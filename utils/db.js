@@ -21,6 +21,13 @@ class DBClient {
       });
   }
 
+  getDb() {
+    if (!this.client.isConnected()) {
+      throw new Error('MongoDB client is not connected');
+    }
+    return this.client.db(this.database);
+  }
+
   // Updated isAlive method
   isAlive() {
     return this.client && this.client.topology && this.client.topology.isConnected();

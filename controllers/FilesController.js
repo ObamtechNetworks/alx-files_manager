@@ -21,7 +21,8 @@ exports.postUpload = async function postUpload(req, res) {
   }
 
   // Retrieve user from the database
-  const user = await dbClient.db.collection('users').findOne({ _id: dbClient.ObjectId(userId) });
+  const db = dbClient.getDb(); // Get the database instance
+  const user = await db.collection('users').findOne({ _id: dbClient.ObjectId(userId) });
 
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -51,7 +52,7 @@ exports.postUpload = async function postUpload(req, res) {
   // Validate parentId if provided
   let parentFile = null;
   if (parentId !== 0) {
-    parentFile = await dbClient.db.collection('files').findOne({ _id: dbClient.ObjectId(parentId) });
+    parentFile = await db.collection('files').findOne({ _id: dbClient.ObjectId(parentId) });
     if (!parentFile) {
       return res.status(400).json({ error: 'Parent not found' });
     }
@@ -70,7 +71,7 @@ exports.postUpload = async function postUpload(req, res) {
       parentId: parentId === 0 ? 0 : dbClient.ObjectId(parentId),
     };
 
-    const result = await dbClient.db.collection('files').insertOne(newFile);
+    const result = await db.collection('files').insertOne(newFile);
     return res.status(201).json({
       id: result.insertedId,
       userId,
