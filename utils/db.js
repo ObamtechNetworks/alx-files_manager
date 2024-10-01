@@ -44,19 +44,31 @@ class DBClient {
   }
 
   async userExist(email) {
-    // checks if a user with an email exists in the database
-    const database = this.client.db(this.database);
-    const collection = database.collection('users');
-    const user = await collection.find({ email }).toArray();
-    return user;
+    try {
+      const db = this.client.db(this.database);
+      const userCollection = db.collection('users');
+      const user = await userCollection.findOne({ email });
+      return user ? [user] : []; // Return an array to maintain consistency
+    } catch (error) {
+      console.error('Error checking user existence:', error);
+      return [];
+    }
   }
 
-  async createUser(email, hashedPw) {
-    // inserst a new user into the database
-    const database = this.client.db(this.database);
-    const collection = database.collection('users');
-    const newUser = await collection.insertOne({ email, password: hashedPw });
-    return newUser;
+  async createUser(email, hashedPass) {
+    try {
+      const db = this.client.db(this.database);
+      const userCollection = db.collection('users');
+      const result = await userCollection.insertOne({
+        email,
+        password: hashedPass,
+      });
+      return result; // This contains insertedId and other details
+    } catch (error) {
+      console.error('Error creating user:', error);
+      return 0;
+      // throw error; // You can handle this error in the controller
+    }
   }
 
   // Asynchronously count the number of files in the 'files' collection
