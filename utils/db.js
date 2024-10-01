@@ -11,13 +11,7 @@ class DBClient {
     this.client = new MongoClient(this.con, { useUnifiedTopology: true });
 
     // Connect asynchronously and handle errors
-    this.client.connect()
-      .then(() => {
-        // console.log('Connected to MongoDB');
-      })
-      .catch((error) => {
-        console.error('MongoDB connection failed:', error);
-      });
+    this.client.connect();
   }
 
   // Updated isAlive method
@@ -50,30 +44,19 @@ class DBClient {
   }
 
   async userExist(email) {
-    try {
-      const db = this.client.db(this.database);
-      const userCollection = db.collection('users');
-      const user = await userCollection.findOne({ email });
-      return user ? [user] : []; // Return an array to maintain consistency
-    } catch (error) {
-      console.error('Error checking user existence:', error);
-      return [];
-    }
+    // checks if a user with an email exists in the database
+    const database = this.client.db(this.database);
+    const collection = database.collection('users');
+    const user = await collection.find({ email }).toArray();
+    return user;
   }
 
-  async createUser(email, password) {
-    try {
-      const db = this.client.db(this.database);
-      const userCollection = db.collection('users');
-      const result = await userCollection.insertOne({
-        email,
-        password,
-      });
-      return result; // This contains insertedId and other details
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error; // You can handle this error in the controller
-    }
+  async createUser(email, hashedPw) {
+    // inserst a new user into the database
+    const database = this.client.db(this.database);
+    const collection = database.collection('users');
+    const newUser = await collection.insertOne({ email, password: hashedPw });
+    return newUser;
   }
 
   // Asynchronously count the number of files in the 'files' collection
