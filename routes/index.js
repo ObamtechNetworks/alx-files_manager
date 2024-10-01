@@ -12,3 +12,5 @@ router.post('/users', postNew); // definition of postNew
 router.get('/connect', getConnect); // defination of getConnect
 router.get('/disconnect', getDisconnect); // definition of getDisconnect
 router.get('/users/me', getMe);
+
+module.exports = router;
