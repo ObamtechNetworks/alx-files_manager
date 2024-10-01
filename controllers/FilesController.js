@@ -5,6 +5,7 @@ const dbClient = require('../utils/db'); // MongoDB client
 const redisClient = require('../utils/redis'); // Redis client
 
 exports.postUpload = async function postUpload(req, res) {
+  console.log('Inside postUpload');
   const token = req.headers['x-token'];
 
   // Check if token is provided

@@ -2,8 +2,7 @@ const express = require('express');
 const appController = require('../controllers/AppController');
 const { postNew, getMe } = require('../controllers/UsersController');
 const { getConnect, getDisconnect } = require('../controllers/AuthController');
-// eslint-disable-next-line no-unused-vars
-const { postUpload, getShow, getIndex } = require('../controllers/FilesController');
+const { postUpload } = require('../controllers/FilesController');
 // const { putPublish, putUnpublish, getFile } = require('../controllers/FilesController');
 
 const router = express.Router();
