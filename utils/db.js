@@ -83,6 +83,17 @@ class DBClient {
       return 0;
     }
   }
+
+  async findUserByEmail(email) {
+    try {
+      const db = this.client.db(this.database);
+      const userCollection = await db.collection('users');
+      return userCollection.findOne({ email });
+    } catch (error) {
+      console.error('Error finding user:', error);
+      return null;
+    }
+  }
 }
 
 // Export the DBClient instance
