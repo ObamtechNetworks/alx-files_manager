@@ -14,7 +14,7 @@ class DBClient {
     // Connect asynchronously and handle errors
     this.client.connect()
       .then(() => {
-        console.log('Connected to MongoDB successfully.');
+        // console.log('Connected to MongoDB successfully.');
       })
       .catch((err) => {
         console.error('Failed to connect to MongoDB', err);
