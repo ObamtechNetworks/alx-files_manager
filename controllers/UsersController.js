@@ -39,7 +39,7 @@ exports.postNew = async function postNew(req, res) {
 };
 
 exports.getMe = async function getMe(req, res) {
-  const token = req.headers['x-token'];
+  const token = req.headers['x-token']; // technique to reterive token from header
 
   // Check if token is provided
   if (!token) {
