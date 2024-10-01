@@ -106,16 +106,16 @@ exports.postUpload = async function postUpload(req, res) {
 
     // Create the file document
     const newFile = {
-      userId: dbClient.ObjectId(userId),
+      userId: ObjectId(userId),
       name,
       type,
       isPublic,
-      parentId: parentId === 0 ? 0 : dbClient.ObjectId(parentId),
+      parentId: parentId === 0 ? 0 : ObjectId(parentId),
       localPath,
     };
 
     // Insert into the database
-    const result = await dbClient.db.collection('files').insertOne(newFile);
+    const result = await db.collection('files').insertOne(newFile);
 
     return res.status(201).json({
       id: result.insertedId,
