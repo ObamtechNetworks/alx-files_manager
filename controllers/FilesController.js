@@ -239,3 +239,114 @@ exports.getIndex = async function getIndex(req, res) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+exports.putPublish = async function putPublish(req, res) {
+  try {
+    console.log('Inside putPublish');
+
+    // Retrieve token from headers
+    const token = req.headers['x-token'];
+
+    // Check if token is provided
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user ID from Redis using the token
+    const userId = await redisClient.get(`auth_${token}`);
+
+    // Check if the user is authenticated
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user from the database
+    const db = dbClient.getDb();
+    const user = await db.collection('users').findOne({ _id: ObjectId(userId) });
+
+    // If no user found, return unauthorized
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the file ID from the request parameters
+    const fileId = req.params.id;
+
+    // Find the file linked to the user
+    const file = await db.collection('files').findOne({ _id: ObjectId(fileId), userId });
+
+    // Check if file exists
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    // Update the file's isPublic status to true
+    await db.collection('files').updateOne(
+      { _id: ObjectId(fileId) },
+      { $set: { isPublic: true } },
+    );
+
+    // Return the updated file document
+    const updatedFile = await db.collection('files').findOne({ _id: ObjectId(fileId) });
+    return res.status(200).json(updatedFile);
+  } catch (error) {
+    console.error('Error in putPublish:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// New putUnpublish method
+exports.putUnpublish = async function putUnpublish(req, res) {
+  try {
+    console.log('Inside putUnpublish');
+
+    // Retrieve token from headers
+    const token = req.headers['x-token'];
+
+    // Check if token is provided
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user ID from Redis using the token
+    const userId = await redisClient.get(`auth_${token}`);
+
+    // Check if the user is authenticated
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user from the database
+    const db = dbClient.getDb();
+    const user = await db.collection('users').findOne({ _id: ObjectId(userId) });
+
+    // If no user found, return unauthorized
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the file ID from the request parameters
+    const fileId = req.params.id;
+
+    // Find the file linked to the user
+    const file = await db.collection('files').findOne({ _id: ObjectId(fileId), userId });
+
+    // Check if file exists
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    // Update the file's isPublic status to false
+    await db.collection('files').updateOne(
+      { _id: ObjectId(fileId) },
+      { $set: { isPublic: false } },
+    );
+
+    // Return the updated file document
+    const updatedFile = await db.collection('files').findOne({ _id: ObjectId(fileId) });
+    return res.status(200).json(updatedFile);
+  } catch (error) {
+    console.error('Error in putUnpublish:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
