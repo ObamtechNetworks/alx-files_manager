@@ -2,7 +2,7 @@ const express = require('express');
 const appController = require('../controllers/AppController');
 const { postNew, getMe } = require('../controllers/UsersController');
 const { getConnect, getDisconnect } = require('../controllers/AuthController');
-const { postUpload } = require('../controllers/FilesController');
+const { postUpload, getShow, getIndex } = require('../controllers/FilesController');
 // const { putPublish, putUnpublish, getFile } = require('../controllers/FilesController');
 
 const router = express.Router();
@@ -13,5 +13,7 @@ router.get('/connect', getConnect); // defination of getConnect
 router.get('/disconnect', getDisconnect); // definition of getDisconnect
 router.get('/users/me', getMe);
 router.post('/files', postUpload);
+router.post('/files/:id', getShow);
+router.post('/files', getIndex);
 
 module.exports = router;

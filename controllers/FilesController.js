@@ -1,6 +1,7 @@
 const { ObjectId } = require('mongodb');
 const { v4: uuidv4 } = require('uuid'); // For generating tokens
 // const sha1 = require('sha1');// For hashing the password
+
 const dbClient = require('../utils/db'); // MongoDB client
 const redisClient = require('../utils/redis'); // Redis client
 
@@ -127,6 +128,114 @@ exports.postUpload = async function postUpload(req, res) {
     });
   } catch (error) {
     console.error('Error in postUpload:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+exports.getShow = async function getShow(req, res) {
+  try {
+    console.log('Inside getShow');
+
+    // Retrieve token from headers
+    const token = req.headers['x-token'];
+
+    // Check if token is provided
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user ID from Redis using the token
+    const userId = await redisClient.get(`auth_${token}`);
+
+    // Check if the user is authenticated
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user from the database
+    const db = dbClient.getDb();
+    const user = await db.collection('users').findOne({ _id: ObjectId(userId) });
+
+    // If no user found, return unauthorized
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Get file ID from the request params
+    const fileId = req.params.id;
+
+    // Validate the file ID format (e.g., must be a valid ObjectId)
+    if (!ObjectId.isValid(fileId)) {
+      return res.status(400).json({ error: 'Invalid file ID' });
+    }
+
+    // Retrieve the file document from the database
+    const file = await db.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
+
+    // Check if the file exists and belongs to the user
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // If the file is found, return the file document
+    return res.status(200).json(file);
+  } catch (error) {
+    console.error('Error in getShow:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+exports.getIndex = async function getIndex(req, res) {
+  try {
+    console.log('Inside getIndex');
+
+    // Retrieve token from headers
+    const token = req.headers['x-token'];
+
+    // Check if token is provided
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user ID from Redis using the token
+    const userId = await redisClient.get(`auth_${token}`);
+
+    // Check if the user is authenticated
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user from the database
+    const db = dbClient.getDb();
+    const user = await db.collection('users').findOne({ _id: ObjectId(userId) });
+
+    // If no user found, return unauthorized
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve parentId and page from query parameters (parentId defaults to 0 if not provided)
+    const parentId = req.query.parentId || '0'; // Default to '0' for root
+    const page = parseInt(req.query.page, 10) || 0; // Default to page 0 if not provided
+
+    // Pagination logic: 20 items per page
+    const pageSize = 20;
+    const skip = page * pageSize;
+
+    // Query the files collection for documents linked to the user and the specific parentId
+    const files = await db.collection('files')
+      .find({
+        userId: ObjectId(userId), // Files linked to the authenticated user
+        parentId: parentId === '0' ? 0 : ObjectId(parentId), // If parentId is '0', match root files, otherwise match parent folder
+      })
+      .skip(skip) // Skip documents for pagination
+      .limit(pageSize) // Limit to 20 documents
+      .toArray(); // Convert the cursor to an array
+
+    // Return the list of files (can be empty if no files are found)
+    return res.status(200).json(files);
+  } catch (error) {
+    console.error('Error in getIndex:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
