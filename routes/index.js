@@ -13,7 +13,7 @@ router.get('/connect', getConnect); // defination of getConnect
 router.get('/disconnect', getDisconnect); // definition of getDisconnect
 router.get('/users/me', getMe);
 router.post('/files', postUpload);
-router.post('/files/:id', getShow);
-router.post('/files', getIndex);
+router.get('/files/:id', getShow);
+router.get('/files', getIndex);
 
 module.exports = router;
