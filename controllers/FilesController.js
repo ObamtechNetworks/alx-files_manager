@@ -1,3 +1,6 @@
+const mime = require('mime-types');
+// const path = require('path');
+const fs = require('fs');
 const { ObjectId } = require('mongodb');
 const { v4: uuidv4 } = require('uuid'); // For generating tokens
 // const sha1 = require('sha1');// For hashing the password
@@ -347,6 +350,74 @@ exports.putUnpublish = async function putUnpublish(req, res) {
     return res.status(200).json(updatedFile);
   } catch (error) {
     console.error('Error in putUnpublish:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+exports.getFile = async function getFile(req, res) {
+  try {
+    console.log('Inside getFile');
+
+    // Retrieve token from headers
+    const token = req.headers['x-token'];
+
+    // Check if token is provided
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user ID from Redis using the token
+    const userId = await redisClient.get(`auth_${token}`);
+
+    // Check if the user is authenticated
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user from the database
+    const db = dbClient.getDb();
+    const user = await db.collection('users').findOne({ _id: ObjectId(userId) });
+
+    // If no user found, return unauthorized
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the file ID from the request parameters
+    const fileId = req.params.id;
+
+    // Find the file linked to the user
+    const file = await db.collection('files').findOne({ _id: ObjectId(fileId) });
+
+    // Check if file exists
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    // Check if the file is public
+    const isOwner = String(file.userId) === String(userId);
+    if (!file.isPublic && !isOwner) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    // Check if the file is a folder
+    if (file.type === 'folder') {
+      return res.status(400).json({ error: "A folder doesn't have content" });
+    }
+
+    // Check if the file is present locally
+    if (!fs.existsSync(file.localpath)) {
+      res.status(404).json({ error: 'Not found' });
+    }
+
+    // Determine the MIME type of the file
+    const filedata = fs.readFileSync(file.localpath);
+    const filename = file.name;
+    const mimetype = mime.lookup(filename);
+    res.setHeader('Content-Type', mimetype);
+    return res.status(200).send(filedata);
+  } catch (error) {
+    console.error(error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
