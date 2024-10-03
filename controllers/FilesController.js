@@ -1,5 +1,5 @@
 const mime = require('mime-types');
-// const path = require('path');
+const path = require('path');
 const fs = require('fs');
 const { ObjectId } = require('mongodb');
 const { v4: uuidv4 } = require('uuid'); // For generating tokens
@@ -355,30 +355,74 @@ exports.putUnpublish = async function putUnpublish(req, res) {
 };
 
 exports.getFile = async function getFile(req, res) {
-  const token = req.get('X-token');
-  const key = `auth_${token}`;
-  const userId = await redisClient.get(key);
+  try {
+    console.log('Inside getFile');
 
-  const fileId = req.params.id;
-  const file = await dbClient.getFile(fileId);
-  if (!file) {
-    res.status(404).json({ error: 'Not found' });
-    return;
+    // Retrieve token from headers
+    const token = req.headers['x-token'];
+
+    // Check if token is provided
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user ID from Redis using the token
+    const userId = await redisClient.get(`auth_${token}`);
+
+    // Check if the user is authenticated
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the user from the database
+    const db = dbClient.getDb();
+    const user = await db.collection('users').findOne({ _id: ObjectId(userId) });
+
+    // If no user found, return unauthorized
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Retrieve the file ID from the request parameters
+    const fileId = req.params.id;
+
+    // Find the file linked to the user
+    const file = await db.collection('files').findOne({ _id: ObjectId(fileId), userId });
+
+    // Check if file exists
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    // Check if the file is a folder (folders don't have content)
+    if (file.type === 'folder') {
+      return res.status(400).json({ error: "A folder doesn't have content" });
+    }
+
+    // If the file is not public and the user is not the owner, return 404
+    if (!file.isPublic && file.userId !== userId) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    // Build the path to the file
+    const filePath = path.join('/tmp/files_manager/', file.localPath);
+
+    // Check if the file exists on disk
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    // Get the MIME-type based on the file name
+    const mimeType = mime.lookup(file.name);
+
+    // Read the file's content
+    const fileContent = fs.readFileSync(filePath);
+
+    // Return the content of the file with the correct MIME-type
+    res.setHeader('Content-Type', mimeType);
+    return res.status(200).send(fileContent);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
-  if (file.isPublic === false && (!userId || file.userId !== userId)) {
-    res.status(404).json({ error: 'Not found' });
-    return;
-  }
-  if (file.type === 'folder') {
-    res.status(400).json({ error: 'A folder doesn\'t have content' });
-    return;
-  }
-  if (!fs.existsSync(file.localpath)) {
-    res.status(404).json({ error: 'Not found' });
-  }
-  const filedata = fs.readFileSync(file.localpath);
-  const filename = file.name;
-  const mimetype = mime.lookup(filename);
-  res.setHeader('Content-Type', mimetype);
-  res.status(200).send(filedata);
 };
