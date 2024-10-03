@@ -177,21 +177,31 @@ exports.getShow = async function getShow(req, res) {
     // Get file ID from the request params
     const fileId = req.params.id;
 
-    // Validate the file ID format (e.g., must be a valid ObjectId)
-    if (!ObjectId.isValid(fileId)) {
-      return res.status(400).json({ error: 'Invalid file ID' });
-    }
+    // // Validate the file ID format (e.g., must be a valid ObjectId)
+    // if (!ObjectId.isValid(fileId)) {
+    //   return res.status(400).json({ error: 'Invalid file ID' });
+    // }
 
     // Retrieve the file document from the database
-    const file = await db.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
+    const file = await db.collection('files').findOne({
+      _id: ObjectId(fileId),
+      userId: ObjectId(userId),
+    });
 
     // Check if the file exists and belongs to the user
     if (!file) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: 'Not Found' });
     }
 
     // If the file is found, return the file document
-    return res.status(200).json(file);
+    return res.status(200).json({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: !!file.isPublic,
+      parentId: file.parentId,
+    });
   } catch (error) {
     console.error('Error in getShow:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -246,7 +256,16 @@ exports.getIndex = async function getIndex(req, res) {
       .toArray(); // Convert the cursor to an array
 
     // Return the list of files (can be empty if no files are found)
-    return res.status(200).json(files);
+    return res.status(200).json(
+      files.map((file) => ({
+        id: file._id,
+        userId: file.userId,
+        name: file.name,
+        type: file.type,
+        isPublic: !!file.isPublic,
+        parentId: file.parentId,
+      })),
+    );
   } catch (error) {
     console.error('Error in getIndex:', error);
     return res.status(500).json({ error: 'Internal server error' });
