@@ -1,6 +1,9 @@
 const mime = require('mime-types');
 const path = require('path');
 const fs = require('fs');
+const Queue = require('bull');
+
+const fileQueue = new Queue('fileQueue');
 const { ObjectId } = require('mongodb');
 const { v4: uuidv4 } = require('uuid'); // For generating tokens
 // const sha1 = require('sha1');// For hashing the password
@@ -121,6 +124,13 @@ exports.postUpload = async function postUpload(req, res) {
     // Insert into the database
     const result = await db.collection('files').insertOne(newFile);
 
+    // Add the job to the Bull queue for image thumbnail processing
+    if (type === 'image') {
+      await fileQueue.add({
+        userId,
+        fileId: result.insertedId.toString(),
+      });
+    }
     return res.status(201).json({
       id: result.insertedId,
       userId,
@@ -387,7 +397,7 @@ exports.getFile = async function getFile(req, res) {
     const fileId = req.params.id;
 
     // Find the file linked to the user
-    const file = await db.collection('files').findOne({ _id: ObjectId(fileId), userId });
+    const file = await db.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
 
     // Check if file exists
     if (!file) {
@@ -400,15 +410,25 @@ exports.getFile = async function getFile(req, res) {
     }
 
     // If the file is not public and the user is not the owner, return 404
-    if (!file.isPublic && file.userId !== userId) {
+    if (!file.isPublic && file.userId.toString() !== userId.toString()) {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    // Build the path to the file
-    const filePath = path.join('/tmp/files_manager/', file.localPath);
+    // Check for size query parameter (allowed sizes: 500, 250, 100)
+    const { size } = req.query;
+    const allowedSizes = [500, 250, 100];
+    let filePath = file.localPath; // Default to the original file path
+
+    if (size && allowedSizes.includes(parseInt(size, 10))) {
+      // Modify the file path to point to the thumbnail
+      filePath = `${file.localPath}_${size}`;
+    }
+
+    // Build the full path to the file
+    const fullPath = path.join('/tmp/files_manager/', filePath);
 
     // Check if the file exists on disk
-    if (!fs.existsSync(filePath)) {
+    if (!fs.existsSync(fullPath)) {
       return res.status(404).json({ error: 'Not found' });
     }
 
@@ -416,13 +436,13 @@ exports.getFile = async function getFile(req, res) {
     const mimeType = mime.lookup(file.name);
 
     // Read the file's content
-    const fileContent = fs.readFileSync(filePath);
+    const fileContent = fs.readFileSync(fullPath);
 
     // Return the content of the file with the correct MIME-type
     res.setHeader('Content-Type', mimeType);
     return res.status(200).send(fileContent);
   } catch (error) {
-    console.error(error);
+    console.error('Error in getFile:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
