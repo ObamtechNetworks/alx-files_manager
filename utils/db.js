@@ -62,10 +62,10 @@ class DBClient {
       const db = this.client.db(this.database);
       const userCollection = db.collection('users');
       const user = await userCollection.findOne({ email });
-      return user ? [user] : []; // Return an array to maintain consistency
+      return user; // Return the user or null if not found
     } catch (error) {
       console.error('Error checking user existence:', error);
-      return [];
+      throw new Error('Database error'); // Allow error propagation
     }
   }
 
@@ -77,11 +77,10 @@ class DBClient {
         email,
         password: hashedPass,
       });
-      return result; // This contains insertedId and other details
+      return result; // Return the result of the insertion
     } catch (error) {
       console.error('Error creating user:', error);
-      return 0;
-      // throw error; // You can handle this error in the controller
+      throw new Error('Failed to create user'); // Allow error propagation
     }
   }
 

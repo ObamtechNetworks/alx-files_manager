@@ -8,34 +8,30 @@ exports.postNew = async function postNew(req, res) {
   const userPassword = req.body.password;
 
   if (!userEmail) {
-    res.status(400).json({
-      error: 'Missing email',
-    });
-    return;
+    return res.status(400).json({ error: 'Missing email' });
   }
 
   if (!userPassword) {
-    res.status(400).json({
-      error: 'Missing password',
-    });
-    return;
+    return res.status(400).json({ error: 'Missing password' });
   }
 
-  const existingUser = await dbClient.userExist(userEmail);
-  if (existingUser.length > 0) {
-    res.status(400).json({
-      error: 'Already exist',
-    });
-    return;
-  }
+  try {
+    const existingUser = await dbClient.userExist(userEmail);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Already exist' });
+    }
 
-  const hashedPass = sha1(userPassword);
-  const user = await dbClient.createUser(userEmail, hashedPass);
-  const id = `${user.insertedId}`;
-  res.status(201).json({
-    id,
-    userEmail,
-  });
+    const hashedPass = sha1(userPassword);
+    const user = await dbClient.createUser(userEmail, hashedPass);
+
+    return res.status(201).json({
+      id: user.insertedId.toString(), // Convert ObjectId to string
+      email: userEmail,
+    });
+  } catch (error) {
+    console.error('Error processing request:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 };
 
 exports.getMe = async function getMe(req, res) {
